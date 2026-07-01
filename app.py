@@ -370,18 +370,26 @@ def extract_pages(file_bytes: bytes, filename: str) -> list:
             if t:
                 out.append({"text": t, "page": i})
         return out
-    if ext in (".docx", ".doc") and HAS_DOCX:
-        doc  = DocxDocument(io.BytesIO(file_bytes))
-        full = "\n".join(p.text.strip() for p in doc.paragraphs if p.text.strip())
-        return [{"text": full[i:i+CHUNK_SIZE*2], "page": n+1}
-                for n, i in enumerate(range(0, max(len(full),1), CHUNK_SIZE*2))]
-    if ext in (".pptx", ".ppt") and HAS_PPTX:
-        prs, out = Presentation(io.BytesIO(file_bytes)), []
-        for i, slide in enumerate(prs.slides, 1):
-            texts = [s.text.strip() for s in slide.shapes if hasattr(s,"text") and s.text.strip()]
-            if texts:
-                out.append({"text": "\n".join(texts), "page": i})
-        return out
+    if ext == ".docx" and HAS_DOCX:
+        try:
+            doc  = DocxDocument(io.BytesIO(file_bytes))
+            full = "\n".join(p.text.strip() for p in doc.paragraphs if p.text.strip())
+            return [{"text": full[i:i+CHUNK_SIZE*2], "page": n+1}
+                    for n, i in enumerate(range(0, max(len(full),1), CHUNK_SIZE*2))]
+        except Exception as e:
+            print(f"Error reading docx: {e}")
+            return []
+    if ext == ".pptx" and HAS_PPTX:
+        try:
+            prs, out = Presentation(io.BytesIO(file_bytes)), []
+            for i, slide in enumerate(prs.slides, 1):
+                texts = [s.text.strip() for s in slide.shapes if hasattr(s,"text") and s.text.strip()]
+                if texts:
+                    out.append({"text": "\n".join(texts), "page": i})
+            return out
+        except Exception as e:
+            print(f"Error reading pptx: {e}")
+            return []
     if ext == ".txt":
         full = file_bytes.decode("utf-8", errors="ignore")
         return [{"text": full[i:i+CHUNK_SIZE*2], "page": n+1}
@@ -587,7 +595,7 @@ with left:
     # ── File uploader (DIRECT Streamlit widget — no div wrapper) ────────────────
     uploaded = st.file_uploader(
         "Upload your course files",
-        type=["pdf", "docx", "doc", "pptx", "ppt", "txt"],
+        type=["pdf", "docx", "pptx", "txt"],
         accept_multiple_files=True,
         label_visibility="collapsed",
     )
