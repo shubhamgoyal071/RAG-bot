@@ -467,6 +467,19 @@ def indexed_docs() -> list:
             names.append(m["source"])
     return sorted(names)
 
+def clear_all_data():
+    # Delete all items from ChromaDB
+    ids = collection.get()["ids"]
+    if ids:
+        collection.delete(ids=ids)
+    # Delete all stored files
+    for f in PDF_DIR.iterdir():
+        if f.is_file() and f.name != ".gitkeep":
+            try:
+                f.unlink()
+            except Exception:
+                pass
+
 
 # ── LLM ────────────────────────────────────────────────────────────────────────
 def call_llm(prompt: str, provider: str, model: str) -> str:
@@ -685,12 +698,21 @@ with left:
           <div class="es">Upload above to begin</div>
         </div>""", unsafe_allow_html=True)
 
-    # ── Clear button (DIRECT Streamlit widget) ───────────────────────────────────
-    if st.button("Clear conversation", use_container_width=True, key="clear_btn"):
-        st.session_state.history   = []
-        st.session_state.notes_out = ""
-        st.session_state.qa_out    = ""
-        st.rerun()
+    # ── Clear buttons (DIRECT Streamlit widgets) ───────────────────────────────────
+    c_btn1, c_btn2 = st.columns(2)
+    with c_btn1:
+        if st.button("Clear chat", use_container_width=True, key="clear_btn"):
+            st.session_state.history   = []
+            st.session_state.notes_out = ""
+            st.session_state.qa_out    = ""
+            st.rerun()
+    with c_btn2:
+        if st.button("Delete files", use_container_width=True, key="del_files_btn"):
+            clear_all_data()
+            st.session_state.history   = []
+            st.session_state.notes_out = ""
+            st.session_state.qa_out    = ""
+            st.rerun()
 
 
 # ╔══════════════════╗
