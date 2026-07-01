@@ -7,12 +7,19 @@ Supports Gemini and Groq as LLM providers.
 import io
 import os
 import pathlib
+import tempfile
 
 import chromadb
 import streamlit as st
 from chromadb.utils import embedding_functions
 from dotenv import load_dotenv
 from pypdf import PdfReader
+
+try:
+    import ppt2txt
+    HAS_PPT2TXT = True
+except ImportError:
+    HAS_PPT2TXT = False
 
 try:
     from docx import Document as DocxDocument
@@ -390,6 +397,22 @@ def extract_pages(file_bytes: bytes, filename: str) -> list:
         except Exception as e:
             print(f"Error reading pptx: {e}")
             return []
+    if ext == ".ppt" and HAS_PPT2TXT:
+        try:
+            with tempfile.NamedTemporaryFile(delete=False, suffix=".ppt") as tmp:
+                tmp.write(file_bytes)
+                tmp_path = tmp.name
+            
+            parsed = ppt2txt.process(tmp_path)
+            os.remove(tmp_path)
+
+            if "content" in parsed:
+                full = "\n".join(parsed["content"].values())
+                return [{"text": full[i:i+CHUNK_SIZE*2], "page": n+1}
+                        for n, i in enumerate(range(0, max(len(full),1), CHUNK_SIZE*2))]
+        except Exception as e:
+            print(f"Error reading ppt: {e}")
+            return []
     if ext == ".txt":
         full = file_bytes.decode("utf-8", errors="ignore")
         return [{"text": full[i:i+CHUNK_SIZE*2], "page": n+1}
@@ -595,7 +618,7 @@ with left:
     # ── File uploader (DIRECT Streamlit widget — no div wrapper) ────────────────
     uploaded = st.file_uploader(
         "Upload your course files",
-        type=["pdf", "docx", "pptx", "txt"],
+        type=["pdf", "docx", "pptx", "ppt", "txt"],
         accept_multiple_files=True,
         label_visibility="collapsed",
     )

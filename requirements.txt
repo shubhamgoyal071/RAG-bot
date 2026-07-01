@@ -7,3 +7,5 @@ python-dotenv
 python-docx
 python-pptx
 groq
+ppt2txt
+olefile
