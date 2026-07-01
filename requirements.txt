@@ -1,0 +1,9 @@
+streamlit
+chromadb
+sentence-transformers
+google-generativeai
+pypdf
+python-dotenv
+python-docx
+python-pptx
+groq
